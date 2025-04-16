@@ -3,6 +3,9 @@
 '''
 @Author  :   Adrian G. Zucco
 @Contact :   adrigabzu@sund.ku.dk
+Decription: 
+    This script generates Word2vec embeddings from synthetic longitudinal data using gensim 
+    under different subsets and seeds.
 '''
 
 # %%

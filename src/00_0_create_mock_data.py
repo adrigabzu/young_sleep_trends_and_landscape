@@ -1,8 +1,10 @@
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
 '''
-Created Date: Tuesday, March 25th 2025, 4:52:45 pm
-Author: Adrian G. Zucco
+@Author  :   Adrian G. Zucco
+@Contact :   adrigabzu@sund.ku.dk
 Decription: 
-    This script generates mock longitudinal data.
+    This script generates longitudinal mock data.
 '''
 
 # %%
