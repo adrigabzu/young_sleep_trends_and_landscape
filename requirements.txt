@@ -1,0 +1,13 @@
+gensim==4.3.2
+matplotlib==3.8.2
+nltk==3.9.1
+numpy==1.25.2
+omniplot==0.4.9
+pacmap==0.7.2
+pandas==2.2.3
+polars==1.27.1
+scikit_learn==1.4.0
+scipy==1.15.2
+seaborn==0.13.2
+torch==2.6.0
+tqdm==4.66.2

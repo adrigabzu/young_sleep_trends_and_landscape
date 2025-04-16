@@ -1,6 +1,8 @@
-""" 
-Created Date: Tuesday, March 25th 2025
-Author: Adrian G. Zucco
+#!/usr/bin/env python
+# -*-coding:utf-8 -*-
+'''
+@Author  :   Adrian G. Zucco
+@Contact :   adrigabzu@sund.ku.dk
 Decription: 
     This script generates co-occurrence matrix and GloVe embeddings from synthetic longitudinal data
     using PyTorch.
@@ -8,7 +10,7 @@ Decription:
 Code inspired by implementations in:
 https://github.com/2014mchidamb/TorchGlove/blob/master/glove.py
 https://github.com/noaRricky/pytorch-glove/blob/master/glove.py
-"""
+'''
 
 # %%
 import polars as pl
@@ -163,13 +165,13 @@ class GloveDataset(Dataset):
 ################## Train GloVe model ####################
 # %%
 # Set GloVe parameters
-embed_size = 50  # Embedding dimension
+embed_size = 200  # Embedding dimension
 x_max = 100  # Maximum co-occurrence value for weighting function
 alpha = 0.75  # Parameter in weighting function
-batch_size = 1024  # Batch size for training
-learning_rate = 0.05  # Learning rate for optimizer
-num_epochs = 10  # Number of training epochs
-num_workers = 6
+batch_size = 4096  # Batch size for training
+learning_rate = 0.001  # Learning rate for optimizer
+num_epochs = 25  # Number of training epochs
+num_workers = 4
 
 # %%
 # Initialize embeddings using nn.Embedding for better efficiency
@@ -180,13 +182,19 @@ context_biases = nn.Embedding(vocab_size, 1)
 
 
 # Initialize weights with uniform distribution
+init_range = 0.5 / embed_size
 for params in [
     focal_embeddings.weight,
-    context_embeddings.weight,
-    focal_biases.weight,
-    context_biases.weight,
+    context_embeddings.weight#,
+    # focal_biases.weight,
+    # context_biases.weight,
 ]:
-    nn.init.uniform_(params, a=-1, b=1)
+    nn.init.uniform_(params, a=-init_range, b=init_range)
+
+# Initialize biases to zero
+nn.init.zeros_(focal_biases.weight)
+nn.init.zeros_(context_biases.weight)
+
 # Move to double precision for numerical stability
 focal_embeddings = focal_embeddings.float()
 context_embeddings = context_embeddings.float()
@@ -204,11 +212,23 @@ optimizer = optim.Adam(params, lr=learning_rate)
 
 # Weight function for co-occurrence values
 def weight_func(cooccurrence_count):
-    weight_factor = torch.pow(
-        torch.tensor(cooccurrence_count / x_max, dtype=torch.float32), alpha
-    )
-    return torch.minimum(weight_factor, torch.ones_like(weight_factor))
+    """
+    Calculates the GloVe weighting factor.
+    f(x) = (x / x_max)^alpha if x < x_max else 1
+    """
+    # Ensure the input tensor is float32 for the division and power.
+    # The input from the dataloader should already be float32,
+    # but this makes it robust.
+    vals_float = cooccurrence_count.float() # or .to(torch.float32)
 
+    # Perform calculations directly on the tensor
+    # Note: x_max and alpha are Python floats/ints, broadcasting works fine.
+    weight_factor = torch.pow(vals_float / x_max, alpha)
+
+    # Clamp the result using torch.minimum
+    # Use torch.ones_like to ensure the '1' tensor has the same dtype and device
+    # as weight_factor.
+    return torch.minimum(weight_factor, torch.ones_like(weight_factor))
 
 # Function to create a batch of training data from co-occurrence matrix
 # def create_batch(batch_size):
@@ -258,11 +278,20 @@ print(f"Using device: {device}")
 torch.set_num_threads(num_workers)
 
 # Move models to device
-focal_embeddings = focal_embeddings.to(device)
-context_embeddings = context_embeddings.to(device)
-focal_biases = focal_biases.to(device)
-context_biases = context_biases.to(device)
+# focal_embeddings = focal_embeddings.to(device)
+# context_embeddings = context_embeddings.to(device)
+# focal_biases = focal_biases.to(device)
+# context_biases = context_biases.to(device)
 
+# Compile model
+focal_embeddings = torch.compile(focal_embeddings)
+context_embeddings = torch.compile(context_embeddings)
+focal_biases = torch.compile(focal_biases)
+context_biases = torch.compile(context_biases)
+
+# --- New parameters for monitoring ---
+log_interval = 500  # Print loss every N batches
+gradient_clip_value = 1.0 # Optional: Value for gradient clipping
 
 for epoch in range(num_epochs):
     start_time = time.time()
@@ -292,7 +321,7 @@ for epoch in range(num_epochs):
         embedding_products = torch.sum(focal_embed * context_embed, dim=1)
 
         # Calculate log co-occurrences
-        log_coocs = torch.log(cooc_vals)
+        log_coocs = torch.log(cooc_vals + 1e-10)  # Add small value to avoid log(0)
 
         # Calculate squared error
         distance_expr = torch.square(
