@@ -24,7 +24,7 @@ Sleep problems among young adults pose a major public health challenge. Based on
 
 ## Setup
 
-1.  **Clone the repository:**
+1.  **Clone the repository**
 
 2.  **Create a virtual environment (recommended):**
     ```bash
