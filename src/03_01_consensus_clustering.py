@@ -245,11 +245,10 @@ def add_co_occurrence_frequency(
             # else: remains NaN (shouldn't happen if len(indices) >= 2)
 
     # --- Add column to DataFrame ---
-    output_col_name = f"{ref_col}_consensus_freq"
+    output_col_name = f"{ref_col}_co_occurrence_freq"
     df[output_col_name] = element_frequencies
 
     return df
-
 
 # %%
 # if __name__ == "__main__":
@@ -285,6 +284,12 @@ df_summary.to_parquet(
     index=False,
 )
 
+# Save as Excel file
+df_summary.to_excel(
+    os.path.join(DATA_DIR, f"consensus_clustering.xlsx"),
+    index=False,
+)
+
 # %%
 print(f"\n--- DataFrame with '{reference_column}_co_occurrence_freq' ---")
 print(df_summary.head())
@@ -303,5 +308,3 @@ print("-" * 30)
 print("\n--- Elements with NaN Frequency (if any) ---")
 print(df_summary[df_summary[f"{reference_column}_co_occurrence_freq"].isna()])
 print("-" * 30)
-
-# %%
